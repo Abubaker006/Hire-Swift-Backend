@@ -1,8 +1,10 @@
 import jwt from "jsonwebtoken";
 
 export const protect = (req, res, next) => {
-  const token = req.cookies.token;
-
+  console.log("Checking token");
+  const token =
+    req.cookies.token || req.header("Authorization")?.replace("Bearer ", "");
+  console.log("Token:", token);
   if (!token) {
     console.log("No token provided");
     return res
@@ -13,6 +15,7 @@ export const protect = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
+    console.log("Token decoded:", decoded);
     next();
   } catch (error) {
     res.status(401).json({ message: "Invalid token, please login again" });
