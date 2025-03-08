@@ -121,3 +121,50 @@ export const deleteJobPosting = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+//@route PATCH /api/v1/recruiter/job-postings/:id/status
+
+export const updateJobPostingStatus = async (req, res) => {
+  try {
+    const recruiterId = req.user?.id;
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const recruiter = await User.findById(recruiterId);
+    if (!recruiter || recruiter.role !== "recruiter") {
+      return res.status(403).json({
+        message: "Only Recruiters are allowed to update job posting status",
+      });
+    }
+
+    const validStatuses = ["draft", "published", "closed"];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    const posting = await JobPosting.findOneAndUpdate(
+      { _id: id, recruiterId },
+      { status, updatedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+
+    if (!posting) {
+      return res.status(404).json({ message: "Job posting not found." });
+    }
+
+    const capitalizedStatus =
+      status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+
+    res.status(200).json({
+      id: posting._id,
+      status: capitalizedStatus,
+      updatedAt: posting.updatedAt,
+      message: "Job posting status updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating job posting status:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

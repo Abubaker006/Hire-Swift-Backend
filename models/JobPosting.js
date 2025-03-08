@@ -43,5 +43,3 @@ const JobPostingSchema = new mongoose.Schema({
 });
 
 export default mongoose.model("JobPosting", JobPostingSchema);
-
-// we are not including application method and application details as we will be a centralized system handling companies job posting and testing candidates. alos there can be screening questions (feature for future) but for now we will stick with ai.
