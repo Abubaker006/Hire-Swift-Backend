@@ -44,14 +44,16 @@ export const getAllJobPosting = async (req, res) => {
   const recruiterId = req.user?.id;
   const query = { recruiterId };
 
-  if (status) query.status = status;
+  if (status) {
+    query.status = { $in: status.split(",") };
+  }
 
   try {
     const postings = await JobPosting.find(query)
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-      .select("title jobType status createdAt");
-
+      .select("id title jobType status locationType createdAt updatedAt");
+    console.log("Postings", postings);
     const total = await JobPosting.countDocuments(query);
     console.log("total", total);
     res.json({

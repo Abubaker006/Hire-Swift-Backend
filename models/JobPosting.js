@@ -29,7 +29,7 @@ const JobPostingSchema = new mongoose.Schema({
     type: { type: String, enum: ["hourly", "salary", "DOE"] },
   },
   applicationDeadLine: { type: Date },
-  startData: { type: Date },
+  startDate: { type: Date },
   duration: { type: String }, 
   diversityStatement: { type: String },
   contactEmail: { type: String },
