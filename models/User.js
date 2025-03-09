@@ -8,13 +8,19 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   contactNumber: { type: String, required: true },
   role: { type: String, enum: ["candidate", "recruiter"], required: true },
+  tokens: {
+    type: Number,
+    default: function () {
+      return this.role === "candidate" ? 300 : 0;
+    },
+  },
 });
 
-UserSchema.pre("save",async function (next){
-    if(!this.isModified("password")) return next();
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
 
-    this.password = await bcrypt.hash(this.password, 10);
-    next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
 export default mongoose.model("User", UserSchema);

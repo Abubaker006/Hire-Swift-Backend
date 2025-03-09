@@ -6,10 +6,10 @@ const JobPostingSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  title: { type: String, requried: true },
+  title: { type: String, required: true },
   jobType: {
     type: String,
-    requried: true,
+    required: true,
     enum: ["internship", "full-time", "part-time", "contract", "temporary"],
   },
   locationType: {
@@ -19,7 +19,7 @@ const JobPostingSchema = new mongoose.Schema({
   },
   locationDetails: { type: String },
   team: { type: String },
-  description: { type: String, requried: true },
+  description: { type: String, required: true },
   requiredQualification: { type: String, required: true },
   prefferedQualification: { type: String },
   techStack: { type: [String], default: [], required: true },
@@ -30,7 +30,7 @@ const JobPostingSchema = new mongoose.Schema({
   },
   applicationDeadLine: { type: Date },
   startDate: { type: Date },
-  duration: { type: String }, 
+  duration: { type: String },
   diversityStatement: { type: String },
   contactEmail: { type: String },
   status: {
@@ -40,6 +40,7 @@ const JobPostingSchema = new mongoose.Schema({
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  numberOfCandidatesRequired: { type: Number, default: 1 },
 });
-
+ 
 export default mongoose.model("JobPosting", JobPostingSchema);
