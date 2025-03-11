@@ -1,13 +1,6 @@
 import User from "../models/User.js";
-import jwt from "jsonwebtoken";
+import { generateToken } from "../utils/jwt.js";
 import bcrypt from "bcryptjs";
-
-//generate JWT TOKEN
-const generateToken = (user) => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
-  });
-};
 
 // @route POST /api/auth/signup
 export const signup = async (req, res) => {
@@ -39,7 +32,7 @@ export const signup = async (req, res) => {
       role,
     });
 
-    const token = generateToken(user);
+    const token = generateToken(user, "1d");
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7,
@@ -77,7 +70,7 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = generateToken(user);
+    const token = generateToken(user, "1d");
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7,

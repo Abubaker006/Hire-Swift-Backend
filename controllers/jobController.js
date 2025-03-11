@@ -2,6 +2,13 @@ import JobPosting from "../models/JobPosting.js";
 import User from "../models/User.js";
 import JobApplication from "../models/JobApplication.js";
 import mongoose from "mongoose";
+import {
+  generateAssessmentCode,
+  sendAssessmentEmail,
+} from "../utils/SendEmail.js";
+import { generateAssessmentToken } from "../utils/jwt.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 // @route POST /api/v1/recruiter/job-postings
 export const createJobPosting = async (req, res) => {
@@ -276,6 +283,17 @@ export const applyToJobPosting = async (req, res) => {
           currentDate.setDate(currentDate.getDate() + 1);
         }
       }
+      
+      const assessmentCode = generateAssessmentCode();
+      const expiryDate = scheduledDateTime.getTime();
+      const assessmentToken = generateAssessmentToken(
+        userId,
+        id,
+        assessmentCode,
+        expiryDate
+      );
+      const assessmentLink = `${process.env.CLIENT_URL}/${process.env.ASSESSMENT_URL}/assessment?token=${assessmentToken}`;
+      console.log("Assessment link", assessmentLink);
 
       const application = new JobApplication({
         userId,
@@ -284,6 +302,8 @@ export const applyToJobPosting = async (req, res) => {
         assessment: {
           scheduled: true,
           scheduledDateTime,
+          assessmentCode,
+          assessmentLink,
         },
       });
       await application.save({ session });
@@ -291,11 +311,21 @@ export const applyToJobPosting = async (req, res) => {
       await session.commitTransaction();
       session.endSession();
 
+      await sendAssessmentEmail(
+        user.email,
+        "Your Assessement is Scheduled",
+        assessmentCode,
+        scheduledDateTime,
+        assessmentLink
+      );
+
       res.status(200).json({
         message: "Successfully applied and assessment scheduled",
         tokensRemaining: user.tokens,
         applicationId: application._id,
         assessmentDateTime: application.assessment.scheduledDateTime,
+        assessmentCode,
+        assessmentLink,
       });
     } catch (error) {
       await session.abortTransaction();

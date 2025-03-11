@@ -41,6 +41,8 @@ const jobApplicationSchema = new mongoose.Schema({
     scheduledDateTime: { type: Date },
     taken: { type: Boolean, default: false },
     completedDate: { type: Date },
+    assessmentCode: { type: String, unique: true },
+    assessmentLink: { type: String },
     codingQuestions: {
       total: { type: Number, default: 0 },
       correct: { type: Number, default: 0 },
