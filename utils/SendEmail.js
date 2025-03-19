@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import JobApplication from "../models/JobApplication.js";
 dotenv.configDotenv();
 
 const transporter = nodemailer.createTransport({
@@ -11,8 +12,14 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const generateAssessmentCode = () => {
-  return crypto.randomBytes(4).toString("hex").toUpperCase();
+export const generateAssessmentCode = async () => {
+  let code;
+  let exists;
+  do {
+    code = Math.random().toString(36).substr(2, 8).toUpperCase();
+    exists = await JobApplication.findOne({ assessmentCode: code });
+  } while (exists);
+  return code;
 };
 
 export const sendAssessmentEmail = async (

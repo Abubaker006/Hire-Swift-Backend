@@ -14,7 +14,7 @@ export const generateAssessmentToken = (
   expiry
 ) => {
   return jwt.sign(
-    { userId, jobId, assessmentCode, exp: Math.floor(expiry / 1000) },
+    { userId, jobId, assessmentCode, exp: expiry },
     process.env.JWT_SECRET,
     { algorithm: "HS256" }
   );

@@ -27,6 +27,8 @@ const jobApplicationSchema = new mongoose.Schema({
       "offer_made",
       "hired",
       "rejected",
+      "assessment_missed",
+      "assessment_started",
     ],
     default: "applied",
     index: true,
@@ -40,23 +42,32 @@ const jobApplicationSchema = new mongoose.Schema({
     scheduled: { type: Boolean, default: false },
     scheduledDateTime: { type: Date },
     taken: { type: Boolean, default: false },
+    isStarted: { type: Boolean, default: false },
     completedDate: { type: Date },
-    assessmentCode: { type: String, unique: true },
+    assessmentCode: {
+      type: String,
+      unique: true,
+    },
     assessmentLink: { type: String },
-    codingQuestions: {
-      total: { type: Number, default: 0 },
-      correct: { type: Number, default: 0 },
-      score: { type: Number, min: 0, max: 100 },
-      submittedCode: [{ questionId: String, code: String, language: String }],
-    },
-    theoryQuestions: {
-      total: { type: Number, default: 0 },
-      correct: { type: Number, default: 0 },
-      score: { type: Number, min: 0, max: 100 },
-      answers: [{ questionId: String, answer: String }],
-    },
+    questions: [
+      {
+        question: { type: String, required: true },
+        type: { type: String, required: true },
+        difficulty: { type: String, required: true },
+        classification: { type: String, required: true },
+        timeLimit: { type: Number, required: true },
+        id: { type: Number, required: true },
+        index: { type: Number, required: true, default: 0 },
+        isSubmitted: { type: Boolean, default: false },
+        total: { type: Number, default: 0 },
+        correct: { type: Boolean, default: false },
+        submittedAnswer: [{ answer: String, language: String }],
+      },
+    ],
+ 
     overallScore: { type: Number, min: 0, max: 100 },
     passed: { type: Boolean, default: false },
+    lastActivity: { type: Date },
   },
 
   interview: {
@@ -84,4 +95,24 @@ jobApplicationSchema.pre("save", function (next) {
   next();
 });
 
-export default mongoose.model("JobApplication", jobApplicationSchema);
+const JobApplication =
+  mongoose.models.JobApplication ||
+  mongoose.model("JobApplication", jobApplicationSchema);
+export default JobApplication;
+
+
+
+   // codingQuestions: {
+    //   total: { type: Number, default: 0 },
+    //   correct: { type: Number, default: 0 },
+    //   score: { type: Number, min: 0, max: 100 },
+    //   submittedCode: [{ questionId: String, code: String, language: String }],
+    //   questions: [{ questionId: String, question: String }],
+    // },
+    // theoryQuestions: {
+    //   total: { type: Number, default: 0 },
+    //   correct: { type: Number, default: 0 },
+    //   score: { type: Number, min: 0, max: 100 },
+    //   answers: [{ questionId: String, answer: String }],
+    //   questions: [{ questionId: String, question: String }],
+    // },
