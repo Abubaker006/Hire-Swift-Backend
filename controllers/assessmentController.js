@@ -6,11 +6,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { scoreQuestion } from "../utils/questionScoring.js";
 
-//linking the file adding as Es modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-//loading questions from .json dataset
 const questionsData = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, "../data/1000_Questions_dataset.json"),
@@ -147,15 +145,35 @@ export const validateAssessment = async (req, res) => {
         (q) => !q.isSubmitted
       );
 
-      const filteredQuestionsResponse = remainingQuestions.map((q) => ({
-        id: q.id.toString(),
-        question: q.question,
-        type: q.type,
-        difficulty: q.difficulty,
-        classification: q.classification,
-        timeLimit: q.timeLimit,
-        index: q.index,
-      }));
+      const now = Date.now();
+      const startTime = new Date(application.assessment.startTime).getTime();
+
+      const elapsedTime = Math.floor((now - startTime) / 1000);
+
+      const filteredQuestionsResponse = remainingQuestions.map((q, index) => {
+        if (index === 0) {
+          const adjustedTimeLimit = Math.max(0, q.timeLimit - elapsedTime);
+          return {
+            id: q.id.toString(),
+            question: q.question,
+            type: q.type,
+            difficulty: q.difficulty,
+            classification: q.classification,
+            timeLimit: adjustedTimeLimit,
+            index: q.index,
+          };
+        }
+        return {
+          id: q.id.toString(),
+          question: q.question,
+          type: q.type,
+          difficulty: q.difficulty,
+          classification: q.classification,
+          timeLimit: q.timeLimit,
+          index: q.index,
+        };
+      });
+
       return res.status(200).json({
         message: "Assessment Resumed",
         canStart: true,
@@ -231,54 +249,71 @@ export const startAssessment = async (req, res) => {
 
     filteredQuestions.sort((a, b) => b.score - a.score);
 
-    let selectedQuestions = [];
-    const difficultyCounts = { Easy: 0, Medium: 0, Hard: 0 };
-    const maxPerDifficulty = {
-      Easy: Math.round(numberOfQuestions * targetDifficulty.Easy),
-      Medium: Math.round(numberOfQuestions * targetDifficulty.Medium),
-      Hard: Math.round(numberOfQuestions * targetDifficulty.Hard),
+    let codingQuestions = filteredQuestions.filter((q) => q.type === "coding");
+    let theoryQuestions = filteredQuestions.filter((q) => q.type === "theory");
+
+    const selectQuestions = (questions, difficulty, count) => {
+      return questions
+        .filter((q) => q.difficulty === difficulty)
+        .slice(0, count);
     };
 
-    for (let diff of ["Easy", "Medium", "Hard"]) {
-      const questionsInDiff = filteredQuestions.filter(
-        (q) => q.difficulty === diff
+    let selectedQuestions = [
+      ...selectQuestions(
+        codingQuestions,
+        "Easy",
+        Math.ceil(targetDifficulty.Easy / 2)
+      ),
+      ...selectQuestions(
+        theoryQuestions,
+        "Easy",
+        Math.floor(targetDifficulty.Easy / 2)
+      ),
+      ...selectQuestions(
+        codingQuestions,
+        "Hard",
+        Math.ceil(targetDifficulty.Hard / 2)
+      ),
+      ...selectQuestions(
+        theoryQuestions,
+        "Hard",
+        Math.floor(targetDifficulty.Hard / 2)
+      ),
+      ...selectQuestions(
+        codingQuestions,
+        "Medium",
+        Math.ceil(targetDifficulty.Medium / 2)
+      ),
+      ...selectQuestions(
+        theoryQuestions,
+        "Medium",
+        Math.floor(targetDifficulty.Medium / 2)
+      ),
+    ];
+    while (selectedQuestions.length < numberOfQuestions) {
+      let remainingQuestion = filteredQuestions.find(
+        (q) => !selectedQuestions.some((sq) => sq.id === q.id)
       );
-      for (let q of questionsInDiff) {
-        if (
-          difficultyCounts[diff] < maxPerDifficulty[diff] &&
-          selectedQuestions.length < numberOfQuestions
-        ) {
-          selectedQuestions.push(q);
-          difficultyCounts[diff]++;
-        }
-      }
-    }
-    // filling remaining slots. accorind to 3-5-2
-    if (selectedQuestions.length < numberOfQuestions) {
-      for (let q of filteredQuestions) {
-        if (
-          !selectedQuestions.some((sq) => sq.id === q.id) &&
-          selectedQuestions.length < numberOfQuestions
-        ) {
-          selectedQuestions.push(q);
-          difficultyCounts[q.difficulty]++;
-        }
-      }
+      if (!remainingQuestion) break;
+      selectedQuestions.push(remainingQuestion);
     }
 
-    // fallback if not enough questions.
-
     if (selectedQuestions.length < numberOfQuestions) {
-      const theoryQuestions = allQuestions.filter(
-        (q) => q.type === "theory" && q.classification === "general"
-      );
-      const remaining = numberOfQuestions - selectedQuestions.length;
-      const additionalQuestions = theoryQuestions
-        .map((q) => ({ ...q, score: scoreQuestion(q, techStack) }))
-        .sort((a, b) => b.score - a.score)
-        .filter((q) => !selectedQuestions.some((sq) => sq.id === q.id))
-        .slice(0, remaining);
-      selectedQuestions = selectedQuestions.concat(additionalQuestions);
+      return res.status(400).json({
+        message: "Not Enough Questions",
+        canStart: false,
+        scheduledDateTime: application.assessment.scheduledDateTime,
+        questions: null,
+        totalTime: null,
+        token: null,
+        status: application.status,
+        assessment: {
+          scheduled: application.assessment.scheduled,
+          taken: application.assessment.taken,
+          passed: application.assessment.passed,
+          overallScore: application.assessment.overallScore || null,
+        },
+      });
     }
 
     if (selectedQuestions.length < numberOfQuestions) {
@@ -316,6 +351,7 @@ export const startAssessment = async (req, res) => {
     application.assessment.questions = questionsWithTime;
     application.status = "assessment_started";
     application.assessment.isStarted = true;
+    application.assessment.startTime = new Date();
 
     await application.save();
 
@@ -345,15 +381,10 @@ export const startAssessment = async (req, res) => {
 //@route POST /api/v1/assessment/submit-answer
 export const submitAssessmentAnswer = async (req, res) => {
   try {
-    const {
-      userId,
-      jobId,
-      assessmentCode,
-      questionId,
-      answer,
-      type,
-      language,
-    } = req.body;
+    const { questionId, answer, language } = req.body;
+    const { userId, jobId, assessmentCode } = req.user;
+    console.log("Decoded Token (req.user):", req.user);
+    console.log("Request Body:", req.body);
 
     if (!userId || !jobId || !assessmentCode || !questionId) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -385,19 +416,39 @@ export const submitAssessmentAnswer = async (req, res) => {
       return res.status(403).json({ message: "Assessment time expired" });
     }
 
-    // Save the answer based on type
-    if (type === "coding") {
-      const submittedCode = { questionId, code: answer, language };
-      application.assessment.codingQuestions.submittedCode.push(submittedCode);
-    } else if (type === "theory") {
-      const submittedAnswer = { questionId, answer };
-      application.assessment.theoryQuestions.answers.push(submittedAnswer);
+    const questionIdNum = Number(questionId);
+
+    const questionIndex = application.assessment.questions.findIndex(
+      (q) => q.id === questionIdNum
+    );
+    console.log(questionIndex);
+    if (questionIndex === -1) {
+      return res.status(400).json({ message: "Questions already submitted." });
     }
 
-    application.assessment.lastActivity = now; // Optional: track activity
+    const question = application.assessment.questions[questionIndex];
+
+    if (question.isSubmitted) {
+      return res.status(400).json({ message: "Question already submitted" });
+    }
+
+    question.submittedAnswer.push({ answer, language });
+    question.isSubmitted = true;
+
+    const allQuestionsSubmitted = application.assessment.questions.every(
+      (q) => q.isSubmitted
+    );
+
+    if (allQuestionsSubmitted) {
+      application.assessment.taken = true;
+      application.status = "assessment_taken";
+    }
+
+    application.assessment.lastActivity = now;
+
     await application.save();
 
-    return res.status(200).json({ message: "Answer submitted successfully" });
+    return res.status(200).json({ message: "Answer Submitted Successfully." });
   } catch (error) {
     console.error("Error submitting answer:", error);
     return res.status(500).json({ message: "Internal Server Error" });
