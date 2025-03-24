@@ -50,10 +50,14 @@ export const sendAssessmentEmail = async (
                     <p><strong>Date & Time:</strong> ${assessmentDateTime}</p>
                     <p>Click the button below to start your assessment:</p>
                     <div style="text-align: center; margin: 20px 0;">
-                      <a href="${assessmentLink}" 
-                        style="background: #5E17EB; color: #ffffff; padding: 12px 20px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">
-                        Start Assessment
-                      </a>
+                     <a href="${assessmentLink}" 
+                      style="background: #5E17EB; color: #ffffff; padding: 12px 20px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;"
+                      oncontextmenu="return false" 
+                      oncopy="return false" 
+                      oncut="return false" 
+                      ondragstart="return false">
+                      Start Assessment
+                    </a>
                     </div>
                     <p>If you have any questions, feel free to contact us.</p>
                     <p>Best Regards,<br>HireSwift Team</p>

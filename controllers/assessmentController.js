@@ -5,6 +5,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { scoreQuestion } from "../utils/questionScoring.js";
+import { geminiEvaluation } from "../AI-Models/aiModels.js";
+import { getGemniPrompt } from "../utils/prompts.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -452,5 +454,56 @@ export const submitAssessmentAnswer = async (req, res) => {
   } catch (error) {
     console.error("Error submitting answer:", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+//@route POST /api/v1/assessment/start-evaluation
+export const startAssessmentEvaluation = async (req, res) => {
+  try {
+    const { answers } = req.body;
+    console.log("Answers", answers);
+    const { userId, jobId, assessmentCode } = req.user;
+    console.log("Job Application Id", req.user);
+
+    if (!userId || !jobId || !assessmentCode || !Array.isArray(answers)) {
+      return res.status(400).json({
+        success: false,
+        message: "Job Application id or answers array is required.",
+      });
+    }
+
+    const jobApplication = await JobApplication.findOne({
+      userId,
+      jobId,
+      "assessment.assessmentCode": assessmentCode,
+    });
+    console.log("Job Application was this", jobApplication);
+    if (!jobApplication) {
+      return res.status(404).json({
+        success: false,
+        message: "Job Applicaiton not found.",
+      });
+    }
+    // if (!jobApplication.assessment || jobApplication.assessment.completedDate) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Assessment not available or already completed",
+    //   });
+    // }
+    const evaluation = [];
+    let totalScore = 0;
+
+    console.log("Entering loop to process answers...");
+    const prompt = getGemniPrompt(jobApplication.assessment.questions, answers);
+
+    console.log("Entering loop to process answers...");
+    const response = await geminiEvaluation(prompt);
+    console.log("response from gemini", response);
+    res
+      .status(200)
+      .json({ response: response, message: "Evaluation Successful." });
+  } catch (error) {
+    console.error("Error occured while starting evaluation.", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
