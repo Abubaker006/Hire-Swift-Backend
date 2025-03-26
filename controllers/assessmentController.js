@@ -144,34 +144,44 @@ export const validateAssessment = async (req, res) => {
       //case 6 when assessment is in progress.
       console.log("Case-6");
       const remainingQuestions = application.assessment.questions.filter(
-        (q) => !q.isSubmitted
+        (q) => q.isSubmitted === false
       );
+      if (remainingQuestions.length === 0) {
+        application.assessment.taken = true;
+        application.status = "assessment_taken";
+        application.assessment.completedDate = now;
+        await application.save();
+        return res.status(200).json({
+          message: "Assessment already completed",
+          canStart: false,
+          questions: [],
+          totalTime: 0,
+          status: application.status,
+          assessment: {
+            scheduled: application.assessment.scheduled,
+            taken: application.assessment.taken,
+            passed: application.assessment.passed,
+            overallScore: application.assessment.overallScore || null,
+          },
+        });
+      }
 
-      const now = Date.now();
+      const nowTimeStamp = Date.now();
       const startTime = new Date(application.assessment.startTime).getTime();
-
-      const elapsedTime = Math.floor((now - startTime) / 1000);
-
+      const elapsedTimeSeconds = Math.floor((nowTimeStamp - startTime) / 1000);
       const filteredQuestionsResponse = remainingQuestions.map((q, index) => {
-        if (index === 0) {
-          const adjustedTimeLimit = Math.max(0, q.timeLimit - elapsedTime);
-          return {
-            id: q.id.toString(),
-            question: q.question,
-            type: q.type,
-            difficulty: q.difficulty,
-            classification: q.classification,
-            timeLimit: adjustedTimeLimit,
-            index: q.index,
-          };
-        }
+        const adjusttedTimeLimit =
+          index === 0
+            ? Math.max(0, q.timeLimit - elapsedTimeSeconds)
+            : q.timeLimit;
+
         return {
           id: q.id.toString(),
           question: q.question,
           type: q.type,
           difficulty: q.difficulty,
           classification: q.classification,
-          timeLimit: q.timeLimit,
+          timeLimit: adjusttedTimeLimit,
           index: q.index,
         };
       });
@@ -180,7 +190,10 @@ export const validateAssessment = async (req, res) => {
         message: "Assessment Resumed",
         canStart: true,
         questions: filteredQuestionsResponse,
-        totalTime: Math.max(0, Math.floor((assessmentEndTime - now) / 1000)),
+        totalTime: Math.max(
+          0,
+          Math.floor((assessmentEndTime - nowTimeStamp) / 1000)
+        ),
         status: application.status,
         assessment: {
           scheduled: application.assessment.scheduled,
@@ -460,12 +473,10 @@ export const submitAssessmentAnswer = async (req, res) => {
 //@route POST /api/v1/assessment/start-evaluation
 export const startAssessmentEvaluation = async (req, res) => {
   try {
-    const { answers } = req.body;
-    console.log("Answers", answers);
     const { userId, jobId, assessmentCode } = req.user;
     console.log("Job Application Id", req.user);
 
-    if (!userId || !jobId || !assessmentCode || !Array.isArray(answers)) {
+    if (!userId || !jobId || !assessmentCode) {
       return res.status(400).json({
         success: false,
         message: "Job Application id or answers array is required.",
@@ -490,14 +501,41 @@ export const startAssessmentEvaluation = async (req, res) => {
     //     message: "Assessment not available or already completed",
     //   });
     // }
-    const evaluation = [];
-    let totalScore = 0;
+    const allQuestions = jobApplication.assessment.questions;
+    if (
+      !allQuestions ||
+      !Array.isArray(allQuestions) ||
+      allQuestions.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "No questions found in the assessment.",
+      });
+    }
 
-    console.log("Entering loop to process answers...");
-    const prompt = getGemniPrompt(jobApplication.assessment.questions, answers);
+    const selectedQuestions = allQuestions.slice(0, 10).map((q) => ({
+      question: q.question,
+      id: q.id,
+      submittedAnswer:
+        q.submittedAnswer && q.submittedAnswer.length > 0
+          ? q.submittedAnswer[0].answer
+          : "",
+    }));
 
-    console.log("Entering loop to process answers...");
-    const response = await geminiEvaluation(prompt);
+    if (selectedQuestions.length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: `Assessment must have exactly 10 questions, found ${selectedQuestions.length}.`,
+      });
+    }
+
+    console.log("Selected 10 Questions:", selectedQuestions);
+
+    const prompt = getGemniPrompt(selectedQuestions);
+    console.log("Prompt", prompt);
+
+    const response = JSON.parse(await geminiEvaluation(prompt));
+
     console.log("response from gemini", response);
     res
       .status(200)

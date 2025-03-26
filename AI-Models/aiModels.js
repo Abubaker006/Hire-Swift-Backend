@@ -12,43 +12,92 @@ const model = genAI.getGenerativeModel({
 });
 
 const generationConfig = {
-  temperature: 1,
-  topP: 0.95,
+  temperature: 0.7, //  lower temp means more better response.
+  topP: 0.9, 
   topK: 40,
   maxOutputTokens: 8192,
   responseMimeType: "application/json",
   responseSchema: {
     type: "object",
     properties: {
-      concepts: {
+      totalScore: {
         type: "integer",
-        description: "Score out of 10 for the understanding of the key concept",
+        description: "Total marks out of 10.",
       },
-      knowledge: {
-        type: "integer",
-        description:
-          "Score out of 10 for the accuracy and detail of the explanation",
+      evaluation: {
+        type: "array",
+        description: "List of evaluations for each question.",
+        items: {
+          type: "object",
+          properties: {
+            questionId: { type: "integer", description: "ID of the question." },
+            score: {
+              type: "integer",
+              description: "1 for correct, 0 for incorrect.",
+            },
+            wrong: {
+              type: "boolean",
+              description: "True if incorrect, false if correct.",
+            },
+            feedback: {
+              type: "string",
+              description: "Explanation for the given score.",
+            },
+          },
+          required: ["questionId", "score", "wrong", "feedback"],
+        },
       },
-      clarity: {
-        type: "integer",
-        description:
-          "Score out of 10 for the clarity and conciseness of the explanation",
+      rightQuestions: {
+        type: "array",
+        description: "List of question IDs where the answer is fully correct.",
+        items: { type: "integer" },
       },
-      accuracy: {
-        type: "integer",
-        description:
-          "Score out of 10 and indicates if the answer is accurate or not",
+      wrongQuestions: {
+        type: "array",
+        description: "List of question IDs where the answer is incorrect.",
+        items: { type: "integer" },
       },
-      pass: {
-        type: "boolean",
-        description: "Boolean value indicating if the answer is correct or not",
+      averageQuestions: {
+        type: "array",
+        description: "List of question IDs with partial correctness.",
+        items: { type: "integer" },
       },
-      observations: {
+      parameters: {
+        type: "object",
+        properties: {
+          concept: {
+            type: "integer",
+            description: "Understanding of core concepts (0-10).",
+          },
+          clarity: {
+            type: "integer",
+            description: "Clarity and articulation (0-10).",
+          },
+          accuracy: {
+            type: "integer",
+            description: "Correctness of responses (0-10).",
+          },
+          knowledge: {
+            type: "integer",
+            description: "Depth of understanding (0-10).",
+          },
+        },
+        required: ["concept", "clarity", "accuracy", "knowledge"],
+      },
+      observation: {
         type: "string",
-        description: "Any additional observations or comments",
+        description: "Summary of the candidate's performance.",
       },
     },
-    required: ["concepts", "knowledge", "clarity", "accuracy", "pass"],
+    required: [
+      "totalScore",
+      "evaluation",
+      "rightQuestions",
+      "wrongQuestions",
+      "averageQuestions",
+      "parameters",
+      "observation",
+    ],
   },
 };
 

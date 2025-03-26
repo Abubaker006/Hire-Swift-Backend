@@ -101,17 +101,3 @@ const JobApplication =
   mongoose.model("JobApplication", jobApplicationSchema);
 export default JobApplication;
 
-// codingQuestions: {
-//   total: { type: Number, default: 0 },
-//   correct: { type: Number, default: 0 },
-//   score: { type: Number, min: 0, max: 100 },
-//   submittedCode: [{ questionId: String, code: String, language: String }],
-//   questions: [{ questionId: String, question: String }],
-// },
-// theoryQuestions: {
-//   total: { type: Number, default: 0 },
-//   correct: { type: Number, default: 0 },
-//   score: { type: Number, min: 0, max: 100 },
-//   answers: [{ questionId: String, answer: String }],
-//   questions: [{ questionId: String, question: String }],
-// },

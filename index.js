@@ -22,7 +22,7 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use("/api/auth", authRoutes); //authentication routes
 app.use("/api/v1/recruiter/job-postings", jobRoutes); // job posting routes
 
-app.use("/api/v1/candidate/job-postings", JobRouteCandidate); //candidate job postings route
+app.use("/api/v1/candidate", JobRouteCandidate); //candidate job postings route
 
 app.use("/api/v1/assessment", AssessmentRoute); //assessment routes
 
