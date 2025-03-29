@@ -9,6 +9,7 @@ import { geminiEvaluation } from "../AI-Models/aiModels.js";
 import { getGemniPrompt } from "../utils/prompts.js";
 import { generatePDF } from "../utils/generatePDF.js";
 import User from "../models/User.js";
+import AssessmentReport from "../models/AssessmentReport.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -476,13 +477,21 @@ export const submitAssessmentAnswer = async (req, res) => {
 export const startAssessmentEvaluation = async (req, res) => {
   try {
     const { userId, jobId, assessmentCode } = req.user;
-    console.log("Job Application Id", req.user);
-
     if (!userId || !jobId || !assessmentCode) {
       return res.status(400).json({
         success: false,
         message: "Job Application id or answers array is required.",
       });
+    }
+
+    const existingReport = await AssessmentReport.findOne({
+      userId,
+      jobId,
+      assessmentCode,
+    });
+
+    if (existingReport) {
+      return res.status(400).json({ message: "Evaluation already performed." });
     }
 
     const jobApplication = await JobApplication.findOne({
@@ -534,27 +543,96 @@ export const startAssessmentEvaluation = async (req, res) => {
       await geminiEvaluation(getGemniPrompt(selectedQuestions))
     );
 
-    console.log("response from gemini", response);
+    const assessmentReport = new AssessmentReport({
+      userId,
+      jobId,
+      assessmentCode,
+      ...response,
+    });
+    await assessmentReport.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Assessment evaluation saved successfully.",
+      data: assessmentReport,
+    });
+  } catch (error) {
+    console.error("Error occured while starting evaluation.", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+//@route POST /api/v1/assessment/generate-report
+//this api will be used by recruiter and candidate both
+export const generateAssessmentReport = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { jobId, assessmentCode } = req.body;
+
+    const assessmentReport = await AssessmentReport.findOne({
+      userId,
+      jobId,
+      assessmentCode,
+    });
+
+    console.log("Assessment Report", assessmentReport);
+
+    if (!assessmentReport) {
+      return res.status(404).json({ message: "Assessment not evaluated yet." });
+    }
+
     const user = await User.findById(userId);
     const jobPosting = await JobPosting.findById(jobId);
+    const jobApplication = await JobApplication.findOne({
+      userId,
+      jobId,
+    });
+
+    const allQuestions = jobApplication.assessment.questions;
+    if (
+      !allQuestions ||
+      !Array.isArray(allQuestions) ||
+      allQuestions.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "No questions found in the assessment.",
+      });
+    }
+
+    const selectedQuestions = allQuestions.slice(0, 10).map((q) => ({
+      question: q.question,
+      id: q.id,
+      submittedAnswer:
+        q.submittedAnswer && q.submittedAnswer.length > 0
+          ? q.submittedAnswer[0].answer
+          : "",
+    }));
+
+    if (selectedQuestions.length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: `Assessment must have exactly 10 questions, found ${selectedQuestions.length}.`,
+      });
+    }
     // preparing data for pdf
 
     const evaluationData = {
       userId: user._id,
-      assessmentCode: jobApplication.assessment.assessmentCode,
+      assessmentCode: assessmentCode,
       candidateName: `${user.firstName} ${user.lastName}`,
       jobTitle: jobPosting.title,
       assessmentName: "Initial Assessment",
       stats: {
-        right: response.rightQuestions.questionIds.length,
-        wrong: response.wrongQuestions.length,
-        average: response.averageQuestions.length,
+        right: assessmentReport.rightQuestions.questionIds.length,
+        wrong: assessmentReport.wrongQuestions.length,
+        average: assessmentReport.averageQuestions.length,
       },
-      questions: response.evaluation.map((q) => {
-        const isRight = response.rightQuestions.questionIds.includes(
+      questions: assessmentReport.evaluation.map((q) => {
+        const isRight = assessmentReport.rightQuestions.questionIds.includes(
           q.questionId
         );
-        const wrongQuestion = response.wrongQuestions.find(
+        const wrongQuestion = assessmentReport.wrongQuestions.find(
           (wq) => wq.questionId === q.questionId
         );
 
@@ -562,8 +640,9 @@ export const startAssessmentEvaluation = async (req, res) => {
           questionId: q.questionId,
           category: isRight ? "Right" : "Wrong",
           topic: isRight
-            ? response.rightQuestions.strongTopics.find(
-                (t) => q.questionId in response.rightQuestions.questionIds
+            ? assessmentReport.rightQuestions.strongTopics.find(
+                (t) =>
+                  q.questionId in assessmentReport.rightQuestions.questionIds
               ) || "General"
             : wrongQuestion?.topics.join(", ") || "General",
           question:
@@ -575,13 +654,108 @@ export const startAssessmentEvaluation = async (req, res) => {
             : wrongQuestion?.suggestion || "Review the related topic.",
         };
       }),
-      observation: response.observation,
+      observation: assessmentReport.observation,
     };
-
-    console.log("evaluation Data", evaluationData);
     await generatePDF(evaluationData, res);
   } catch (error) {
-    console.error("Error occured while starting evaluation.", error);
+    console.error("Error while generating assessment report", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+//@route GET /api/v1/assessment/get-all-assessments
+//this api has different response based on user role.
+export const getAllAssessments = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(403).json({ message: "Unauthorized user" });
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(403)
+        .json({ message: "Access denied. Recruiter role required." });
+    }
+
+    if (user.role === "recruiter") {
+      const jobPostings = await JobPosting.find({ recruiterId: userId }).select(
+        "_id title"
+      );
+      const jobIds = jobPostings.map((job) => job._id);
+
+      const assessments = await AssessmentReport.find({
+        jobId: { $in: jobIds },
+      })
+        .populate("userId", "firstName lastName email")
+        .populate("jobId", "title")
+        .sort({ totalScore: -1 });
+
+      if (assessments.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No assessments found for your job postings.",
+        });
+      }
+
+      const rankedAssessments = assessments.map((report, index) => ({
+        rank: index + 1,
+        candidate: {
+          id: report.userId._id,
+          name: `${report.userId.firstName} ${report.userId.lastName}`,
+          email: report.userId.email,
+        },
+        job: {
+          id: report.jobId._id,
+          title: report.jobId.title,
+        },
+        assessment: {
+          assessmentCode: report.assessmentCode,
+          totalScore: report.totalScore,
+          parameters: report.parameters,
+          observation: report.observation,
+        },
+      }));
+
+      return res.status(200).json({
+        success: true,
+        message: "Ranked assessment reports retrieved successfully.",
+        data: rankedAssessments,
+      });
+    } else if (user.role === "candidate") {
+      const assessments = await AssessmentReport.find({ userId })
+        .populate("jobId", "title")
+        .sort({ totalScore: -1 });
+
+      if (assessments.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "No assessments found for your account.",
+        });
+      }
+
+      const candidateAssessments = assessments.map((report) => ({
+        job: {
+          id: report.jobId._id,
+          title: report.jobId.title,
+        },
+        assessment: {
+          assessmentCode: report.assessmentCode,
+          totalScore: report.totalScore,
+          parameters: report.parameters,
+          observation: report.observation,
+        },
+      }));
+
+      return res.status(200).json({
+        success: true,
+        message: "Your assessment reports retrieved successfully.",
+        data: candidateAssessments,
+      });
+    }
+    return res.status(403).json({ message: "Access denied." });
+  } catch (error) {
+    console.error("Error getting assessments data", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

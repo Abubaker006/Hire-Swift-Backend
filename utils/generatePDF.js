@@ -6,7 +6,7 @@ import { generateChart } from "./generateChart.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const reportsDir = path.join(__dirname, "../reports");
+const reportsDir = path.join(__dirname, "../public/reports");
 
 const theme = {
   primaryColor: "#5E17EB",
@@ -139,7 +139,6 @@ export const generatePDF = async (evaluationData, res) => {
       const centerX = (doc.page.width - imageWidth) / 2;
       doc.image(chartImage, centerX, doc.y, { width: imageWidth }).moveDown(2);
     }
-
 
     doc.addPage();
 
@@ -276,6 +275,11 @@ export const generatePDF = async (evaluationData, res) => {
     doc.end();
 
     stream.on("finish", () => {
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="assessment_report.pdf"'
+      );
+      res.setHeader("Content-Type", "application/pdf");
       res.download(pdfPath, "assessment_report.pdf", (err) => {
         if (err) console.error("Error sending PDF:", err);
       });

@@ -211,7 +211,6 @@ export const geminiEvaluation = async (prompt) => {
 
     const result = await chatSession.sendMessage(prompt);
     const structuredResponse = result.response.text();
-    console.log("Respnse of evaluation by gemini is this", structuredResponse);
     return structuredResponse;
   } catch (error) {
     console.error("Error occured while evaluation from gemini", error);

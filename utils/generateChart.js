@@ -1,10 +1,20 @@
-import { Chart, PieController, ArcElement, Tooltip, Legend, Title } from "chart.js";
+import {
+  Chart,
+  PieController,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Title,
+} from "chart.js";
 import { createCanvas } from "canvas";
 import fs from "fs";
 import path from "path";
-
+import { fileURLToPath } from "url";
 // Register the necessary Chart.js components
 Chart.register(PieController, ArcElement, Tooltip, Legend, Title);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const generateChart = async (right, wrong, average) => {
   const canvas = createCanvas(400, 400);
@@ -13,7 +23,7 @@ export const generateChart = async (right, wrong, average) => {
   new Chart(ctx, {
     type: "pie",
     data: {
-      labels: [`Right (${right})`, `Wrong (${wrong})`, `Average (${average})`], // Added numbers in labels
+      labels: [`Right (${right})`, `Wrong (${wrong})`, `Average (${average})`], 
       datasets: [
         {
           data: [right, wrong, average],
@@ -43,7 +53,11 @@ export const generateChart = async (right, wrong, average) => {
     },
   });
 
-  const chartPath = path.join("./reports", "chart.png");
+  const chartPath = path.join(__dirname, "../public/reports/chart.png");
+
+  if (!fs.existsSync(path.dirname(chartPath))) {
+    fs.mkdirSync(path.dirname(chartPath), { recursive: true });
+  }
 
   return new Promise((resolve, reject) => {
     const out = fs.createWriteStream(chartPath);

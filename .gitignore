@@ -136,4 +136,4 @@ dist
 .pnp.*
 
 #Ignore Reports Folder
-reports/
+public/
