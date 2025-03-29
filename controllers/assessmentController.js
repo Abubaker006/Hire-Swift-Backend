@@ -7,6 +7,8 @@ import { fileURLToPath } from "url";
 import { scoreQuestion } from "../utils/questionScoring.js";
 import { geminiEvaluation } from "../AI-Models/aiModels.js";
 import { getGemniPrompt } from "../utils/prompts.js";
+import { generatePDF } from "../utils/generatePDF.js";
+import User from "../models/User.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -488,19 +490,18 @@ export const startAssessmentEvaluation = async (req, res) => {
       jobId,
       "assessment.assessmentCode": assessmentCode,
     });
-    console.log("Job Application was this", jobApplication);
     if (!jobApplication) {
       return res.status(404).json({
         success: false,
         message: "Job Applicaiton not found.",
       });
     }
-    // if (!jobApplication.assessment || jobApplication.assessment.completedDate) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Assessment not available or already completed",
-    //   });
-    // }
+    if (!jobApplication.assessment || jobApplication.assessment.completedDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Assessment not available or already completed",
+      });
+    }
     const allQuestions = jobApplication.assessment.questions;
     if (
       !allQuestions ||
@@ -529,17 +530,56 @@ export const startAssessmentEvaluation = async (req, res) => {
       });
     }
 
-    console.log("Selected 10 Questions:", selectedQuestions);
-
-    const prompt = getGemniPrompt(selectedQuestions);
-    console.log("Prompt", prompt);
-
-    const response = JSON.parse(await geminiEvaluation(prompt));
+    const response = JSON.parse(
+      await geminiEvaluation(getGemniPrompt(selectedQuestions))
+    );
 
     console.log("response from gemini", response);
-    res
-      .status(200)
-      .json({ response: response, message: "Evaluation Successful." });
+    const user = await User.findById(userId);
+    const jobPosting = await JobPosting.findById(jobId);
+    // preparing data for pdf
+
+    const evaluationData = {
+      userId: user._id,
+      assessmentCode: jobApplication.assessment.assessmentCode,
+      candidateName: `${user.firstName} ${user.lastName}`,
+      jobTitle: jobPosting.title,
+      assessmentName: "Initial Assessment",
+      stats: {
+        right: response.rightQuestions.questionIds.length,
+        wrong: response.wrongQuestions.length,
+        average: response.averageQuestions.length,
+      },
+      questions: response.evaluation.map((q) => {
+        const isRight = response.rightQuestions.questionIds.includes(
+          q.questionId
+        );
+        const wrongQuestion = response.wrongQuestions.find(
+          (wq) => wq.questionId === q.questionId
+        );
+
+        return {
+          questionId: q.questionId,
+          category: isRight ? "Right" : "Wrong",
+          topic: isRight
+            ? response.rightQuestions.strongTopics.find(
+                (t) => q.questionId in response.rightQuestions.questionIds
+              ) || "General"
+            : wrongQuestion?.topics.join(", ") || "General",
+          question:
+            selectedQuestions.find((sq) => sq.id === q.questionId)?.question ||
+            "Unknown",
+          feedback: q.feedback,
+          suggestion: isRight
+            ? null
+            : wrongQuestion?.suggestion || "Review the related topic.",
+        };
+      }),
+      observation: response.observation,
+    };
+
+    console.log("evaluation Data", evaluationData);
+    await generatePDF(evaluationData, res);
   } catch (error) {
     console.error("Error occured while starting evaluation.", error);
     res.status(500).json({ message: "Internal Server Error" });
