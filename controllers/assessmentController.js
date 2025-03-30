@@ -554,7 +554,6 @@ export const startAssessmentEvaluation = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Assessment evaluation saved successfully.",
-      data: assessmentReport,
     });
   } catch (error) {
     console.error("Error occured while starting evaluation.", error);
