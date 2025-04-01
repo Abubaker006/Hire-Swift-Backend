@@ -10,3 +10,10 @@ Before running the project, ensure you have the following installed on your syst
   To verify Node.js is installed, run:
   ```bash
   node -v
+
+## Post Requisite
+
+- **Install dependencies**
+  To install dependencies run 
+ ```bash
+ npm install 
