@@ -1,23 +1,29 @@
-# Node.js Backend Project
-
+Node.js Backend Project
 This is a Node.js backend project. Follow the steps below to set it up and run it on your local machine.
 
-## Prerequisites
-
+Prerequisites
 Before running the project, ensure you have the following installed on your system:
 
-- **Node.js**: This project requires Node.js to be installed. You can download it from [nodejs.org](https://nodejs.org/).  
-  To verify Node.js is installed, run:
-  ```bash
-  node -v
+Node.js: This project requires Node.js to be installed. You can download it from nodejs.org.
+To verify that Node.js is installed, run:
 
-## Post Requisite
-- **Install dependencies**
-  To install dependencies run 
- ```bash
- npm install
+bash
+Copy
+Edit
+node -v
+Post Requisite
+1. Install Dependencies
+To install the required dependencies, run:
 
-- **Run Project**
-  To start backend run:
-```bash
-npm run start 
+bash
+Copy
+Edit
+npm install
+2. Run the Project
+To start the backend server, run:
+
+bash
+Copy
+Edit
+npm run start
+This should now render correctly in Markdown. Let me know if you need further adjustments!
