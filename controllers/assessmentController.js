@@ -565,16 +565,13 @@ export const startAssessmentEvaluation = async (req, res) => {
 //this api will be used by recruiter and candidate both
 export const generateAssessmentReport = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    const { jobId, assessmentCode } = req.body;
+    const { userId, jobId, assessmentCode } = req.body;
 
     const assessmentReport = await AssessmentReport.findOne({
       userId,
       jobId,
       assessmentCode,
     });
-
-    console.log("Assessment Report", assessmentReport);
 
     if (!assessmentReport) {
       return res.status(404).json({ message: "Assessment not evaluated yet." });
@@ -734,6 +731,9 @@ export const getAllAssessments = async (req, res) => {
       }
 
       const candidateAssessments = assessments.map((report) => ({
+        candidate: {
+          id: user._id,
+        },
         job: {
           id: report.jobId._id,
           title: report.jobId.title,
