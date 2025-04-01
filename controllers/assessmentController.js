@@ -685,7 +685,7 @@ export const getAllAssessments = async (req, res) => {
       })
         .populate("userId", "firstName lastName email")
         .populate("jobId", "title")
-        .sort({ totalScore: -1 });
+        .sort({ jobId: 1, totalScore: -1 });
 
       if (assessments.length === 0) {
         return res.status(404).json({
@@ -693,25 +693,37 @@ export const getAllAssessments = async (req, res) => {
           message: "No assessments found for your job postings.",
         });
       }
+      const rankedAssessments = [];
+      let currentJobId = null;
+      let rank = 0;
 
-      const rankedAssessments = assessments.map((report, index) => ({
-        rank: index + 1,
-        candidate: {
-          id: report.userId._id,
-          name: `${report.userId.firstName} ${report.userId.lastName}`,
-          email: report.userId.email,
-        },
-        job: {
-          id: report.jobId._id,
-          title: report.jobId.title,
-        },
-        assessment: {
-          assessmentCode: report.assessmentCode,
-          totalScore: report.totalScore,
-          parameters: report.parameters,
-          observation: report.observation,
-        },
-      }));
+      assessments.forEach((report, index) => {
+        if (report.jobId._id.toString() !== currentJobId) {
+          currentJobId = report.jobId._id.toString();
+          rank = 1;
+        } else {
+          rank++;
+        }
+
+        rankedAssessments.push({
+          rank,
+          candidate: {
+            id: report.userId._id,
+            name: `${report.userId.firstName} ${report.userId.lastName}`,
+            email: report.userId.email,
+          },
+          job: {
+            id: report.jobId._id,
+            title: report.jobId.title,
+          },
+          assessment: {
+            assessmentCode: report.assessmentCode,
+            totalScore: report.totalScore,
+            parameters: report.parameters,
+            observation: report.observation,
+          },
+        });
+      });
 
       return res.status(200).json({
         success: true,
