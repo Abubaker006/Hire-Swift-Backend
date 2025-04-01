@@ -12,8 +12,12 @@ Before running the project, ensure you have the following installed on your syst
   node -v
 
 ## Post Requisite
-
 - **Install dependencies**
   To install dependencies run 
  ```bash
- npm install 
+ npm install
+
+- **Run Project**
+  To start backend run:
+```bash
+npm run start 
