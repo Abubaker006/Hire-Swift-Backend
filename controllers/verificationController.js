@@ -15,8 +15,28 @@ export const postFaceDescriptions = async (req, res) => {
     if (!jobApp)
       return res.status(404).json({ message: "Job application not found" });
 
+    const existingProctor = await Proctoring.findOne({
+      userId,
+      jobId: jobApp._id,
+    });
+
+    const now = new Date();
+    const scheduledTime = new Date(jobApp.scheduledDateTime);
+    const graceTime = new Date(scheduledTime.getTime() + 5 * 60 * 1000);
+
+    if (existingProctor) {
+      if (graceTime <= now) {
+        await Proctoring.deleteOne({ _id: existingProctor._id });
+      } else {
+        return res
+          .status(200)
+          .json({ message: "Face Descriptor already exists" });
+      }
+    }
+
     const proctorData = new Proctoring({
-      jobApplicationId: jobApp._id,
+      userId: userId,
+      jobId: jobApp._id,
       descriptor,
     });
     await proctorData.save();
@@ -74,19 +94,18 @@ export const getDescriptor = async (req, res) => {
       return res.status(404).json({ message: "Job application not found" });
 
     const proctorData = await Proctoring.findOne({
-      jobApplicationId: jobApp._id,
+      userId: userId,
+      jobId: jobApp._id,
     });
 
     if (!proctorData || !proctorData.descriptor) {
       return res.status(404).json({ message: "Descriptor not found" });
     }
 
-    res
-      .status(200)
-      .json({
-        message: "Discription data extracted sucessfully.",
-        descriptor: proctorData.descriptor,
-      });
+    res.status(200).json({
+      message: "Discription data extracted sucessfully.",
+      descriptor: proctorData.descriptor,
+    });
   } catch (err) {
     console.error("Error fetching descriptor", err);
     res.status(500).json({ message: "Internal server error" });
