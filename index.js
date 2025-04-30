@@ -8,6 +8,7 @@ import jobRoutes from "./routes/JobRoutes.js";
 import JobRouteCandidate from "./routes/JobRouteCandidate.js";
 import AssessmentRoute from "./routes/assessmentRoutes.js";
 import VerificationRoute from "./routes/verificationRoutes.js";
+import StripeRoutes from "./routes/stripeRoute.js";
 
 configDotenv(); //configure dotenv
 connectDb(); //connect to database
@@ -28,6 +29,8 @@ app.use("/api/v1/candidate", JobRouteCandidate); //candidate job postings route
 app.use("/api/v1/assessment", AssessmentRoute); //assessment routes
 
 app.use("/api/v1/verification", VerificationRoute); //verification and voilation routes
+
+app.use("/api/v1/stripe", StripeRoutes);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server Running on PORT: ${PORT}`));
