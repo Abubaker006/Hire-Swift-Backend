@@ -1,5 +1,4 @@
 import nodemailer from "nodemailer";
-import crypto from "crypto";
 import dotenv from "dotenv";
 import JobApplication from "../models/JobApplication.js";
 dotenv.configDotenv();
@@ -77,4 +76,47 @@ export const sendAssessmentEmail = async (
     console.error("Error sending email", error);
     throw error;
   }
+};
+
+export const sendResetEmail = async (email, resetLink) => {
+   const mailOptions = {
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: "Password Reset Request",
+    html: `<div style="background-color: #f9f9f9; padding: 20px; font-family: Arial, sans-serif;">
+              <table style="max-width: 600px; margin: auto; background: #ffffff; border-radius: 8px; box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                <tr>
+                  <td style="background: #5E17EB; padding: 20px; text-align: center;">
+                    <h2 style="color: #ffffff; margin: 0;">Password Reset Request</h2>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px; color: #333;">
+                    <p>Hello,</p>
+                    <p>Your request for reseting password was accepted, find the details below:</p>
+                    <p>Click the button below to reset your password:</p>
+                    <div style="text-align: center; margin: 20px 0;">
+                     <a href="${resetLink}" 
+                      style="background: #5E17EB; color: #ffffff; padding: 12px 20px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;"
+                      oncontextmenu="return false" 
+                      oncopy="return false" 
+                      oncut="return false" 
+                      ondragstart="return false">
+                      Start Assessment
+                    </a>
+                    </div>
+                    <p>For any query, feel free to contact us.</p>
+                    <p>Best Regards,<br>HireSwift Team</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background: #000; padding: 10px; text-align: center; color: #ffffff; font-size: 12px;">
+                    &copy; ${new Date().getFullYear()} HireSwift. All Rights Reserved.
+                  </td>
+                </tr>
+              </table>
+            </div>`,
+  };
+
+  await transporter.sendMail(mailOptions);
 };
