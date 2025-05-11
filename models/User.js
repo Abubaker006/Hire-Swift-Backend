@@ -14,6 +14,8 @@ const UserSchema = new mongoose.Schema({
       return this.role === "candidate" ? 300 : 0;
     },
   },
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date },
 });
 
 UserSchema.pre("save", async function (next) {

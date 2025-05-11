@@ -61,8 +61,9 @@ export const reportViolation = async (req, res) => {
     if (!jobApp)
       return res.status(404).json({ message: "Job application not found" });
 
+    console.log(jobApp._id);
     const proctorData = await Proctoring.findOne({
-      jobApplicationId: jobApp._id,
+      jobId: jobApp._id,
     });
 
     if (!proctorData)
@@ -73,6 +74,17 @@ export const reportViolation = async (req, res) => {
 
     if (proctorData.violations.count >= 3) {
       proctorData.isTampered = true;
+      await proctorData.save();
+      jobApp.status = "assessment_failed";
+      jobApp.assessment.isStarted = false;
+      jobApp.assessment.completedDate = new Date();
+      jobApp.assessment.passed = false;
+
+      await jobApp.save();
+
+      return res
+        .status(201)
+        .json({ message: "Assessment Compromised", isTampered: true });
     }
 
     await proctorData.save();

@@ -624,6 +624,7 @@ export const generateAssessmentReport = async (req, res) => {
         wrong: assessmentReport.wrongQuestions.length,
         average: assessmentReport.averageQuestions.length,
       },
+      providedTotalScore: assessmentReport.totalScore,
       questions: assessmentReport.evaluation.map((q) => {
         const isRight = assessmentReport.rightQuestions.questionIds.includes(
           q.questionId
@@ -631,23 +632,39 @@ export const generateAssessmentReport = async (req, res) => {
         const wrongQuestion = assessmentReport.wrongQuestions.find(
           (wq) => wq.questionId === q.questionId
         );
+        const averageQuestions = assessmentReport.averageQuestions.find(
+          (aq) => aq.questionId === q.questionId
+        );
+
+        let category = "Wrong";
+        let topic = wrongQuestion?.topics.join(", ") || "General";
+        let suggestion =
+          wrongQuestion?.suggestion || "Review the related topic.";
+
+        if (isRight) {
+          category = "Right";
+          topic =
+            assessmentReport.rightQuestions.strongTopics.find((t) =>
+              selectedQuestions.some(
+                (sq) => sq.id === q.questionId && t.includes(sq.question)
+              )
+            ) || "General";
+        } else if (averageQuestions) {
+          category = "Average";
+          topic = averageQuestions.topics.join(", ") || "General";
+          suggestion =
+            averageQuestions.suggestion || "Practice this topic further.";
+        }
 
         return {
           questionId: q.questionId,
-          category: isRight ? "Right" : "Wrong",
-          topic: isRight
-            ? assessmentReport.rightQuestions.strongTopics.find(
-                (t) =>
-                  q.questionId in assessmentReport.rightQuestions.questionIds
-              ) || "General"
-            : wrongQuestion?.topics.join(", ") || "General",
+          category,
+          topic,
           question:
             selectedQuestions.find((sq) => sq.id === q.questionId)?.question ||
             "Unknown",
           feedback: q.feedback,
-          suggestion: isRight
-            ? null
-            : wrongQuestion?.suggestion || "Review the related topic.",
+          suggestion,
         };
       }),
       observation: assessmentReport.observation,

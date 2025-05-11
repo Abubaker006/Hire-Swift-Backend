@@ -77,7 +77,10 @@ export const generatePDF = async (evaluationData, res) => {
       .text(`Assessment Code: ${evaluationData.assessmentCode}`)
       .moveDown(0.3);
 
-    const totalScore = evaluationData.stats.right * 10;
+    const totalScore =
+      evaluationData.stats.right * 10 > 0
+        ? evaluationData.stats.right * 10
+        : evaluationData.providedTotalScore;
     doc
       .font(theme.fontBold)
       .fontSize(18)
