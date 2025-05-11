@@ -8,8 +8,8 @@ const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-pro",
-});
+  model: "gemini-1.5-flash", //gemini.1.5-flash instead of gemini-1.5-pro (used as a fix for
+}); //unidentified 429 code, which occures abruptly without quota exceed)
 
 const generationConfig = {
   temperature: 0.7,
