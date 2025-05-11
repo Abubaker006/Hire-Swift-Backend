@@ -229,11 +229,10 @@ export const applyToJobPosting = async (req, res) => {
       user.tokens -= 10;
       await user.save({ session });
 
-      const SLOT_DURATION = 40 * 60 * 1000; // 40 minutes
+      const SLOT_DURATION = 40 * 60 * 1000;
       const START_HOUR = 9;
       const END_HOUR = 14;
 
-      // Get user's last scheduled assessment
       const lastUserAssessment = await JobApplication.findOne({
         userId,
         "assessment.scheduled": true,
@@ -242,13 +241,14 @@ export const applyToJobPosting = async (req, res) => {
         .sort({ "assessment.scheduledDateTime": -1 })
         .session(session);
 
-      // Calculate next slot for this user
       let currentDate = new Date();
       if (lastUserAssessment) {
-        currentDate = new Date(lastUserAssessment.assessment.scheduledDateTime.getTime() + SLOT_DURATION);
+        currentDate = new Date(
+          lastUserAssessment.assessment.scheduledDateTime.getTime() +
+            SLOT_DURATION
+        );
       }
 
-      // Round seconds and milliseconds
       currentDate.setSeconds(0, 0);
 
       let scheduledDateTime;
@@ -258,13 +258,10 @@ export const applyToJobPosting = async (req, res) => {
           scheduledDateTime = new Date(currentDate);
           break;
         }
-
-        // If outside working hours, move to next day's 9 AM
         currentDate.setDate(currentDate.getDate() + 1);
         currentDate.setHours(START_HOUR, 0, 0, 0);
       }
 
-      // Generate assessment link
       const assessmentCode = await generateAssessmentCode();
       const expiryDate = scheduledDateTime.getTime();
       const assessmentToken = generateAssessmentToken(
