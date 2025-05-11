@@ -226,141 +226,57 @@ export const applyToJobPosting = async (req, res) => {
     session.startTransaction();
 
     try {
-      // user.tokens -= 10;
-      // await user.save({ session });
-
-      // const SLOT_DURATION = 40 * 60 * 1000;
-      // const MAX_SLOTS_PER_DAY = 10;
-      // const START_HOUR = 9;
-      // const END_HOUR = 14;
-
-      // let scheduledDateTime;
-      // let currentDate = new Date();
-      // currentDate.setDate(currentDate.getDate() + 1);
-      // currentDate.setHours(0, 0, 0, 0);
-
-      // while (!scheduledDateTime) {
-      //   const dayStart = new Date(currentDate);
-      //   dayStart.setHours(START_HOUR, 0, 0, 0);
-
-      //   const dayEnd = new Date(dayStart);
-      //   dayEnd.setHours(END_HOUR, 0, 0, 0);
-
-      //   const scheduledCount = await JobApplication.countDocuments({
-      //     "assessment.scheduledDateTime": {
-      //       $gte: dayStart,
-      //       $lt: dayEnd,
-      //     },
-      //   }).session(session);
-
-      //   if (scheduledCount < MAX_SLOTS_PER_DAY) {
-      //     const scheduledTimes = await JobApplication.find({
-      //       "assessment.scheduledDateTime": {
-      //         $gte: dayStart,
-      //         $lt: dayEnd,
-      //       },
-      //     })
-      //       .select("assessment.scheduledDateTime")
-      //       .sort("assessment.scheduledDateTime")
-      //       .session(session);
-
-      //     let nextSlot = new Date(dayStart);
-      //     const takenSlots = scheduledTimes.map((app) =>
-      //       app.assessment.scheduledDateTime.getTime()
-      //     );
-
-      //     for (let i = 0; i < MAX_SLOTS_PER_DAY; i++) {
-      //       const slotTime = nextSlot.getTime();
-      //       if (!takenSlots.includes(slotTime)) {
-      //         scheduledDateTime = new Date(slotTime);
-      //         break;
-      //       }
-      //       nextSlot = new Date(slotTime + SLOT_DURATION);
-      //     }
-      //   }
-
-      //   if (!scheduledDateTime) {
-      //     currentDate.setDate(currentDate.getDate() + 1);
-      //   }
-      // }
-
-      // const assessmentCode = await generateAssessmentCode();
-      // const expiryDate = scheduledDateTime.getTime();
-      // const assessmentToken = generateAssessmentToken(
-      //   userId,
-      //   id,
-      //   assessmentCode,
-      //   expiryDate
-      // );
-      // const assessmentLink = `${process.env.CLIENT_URL}/${process.env.ASSESSMENT_URL}/assessment?token=${assessmentToken}`;
-      // console.log("Assessment link", assessmentLink);
-
-      // const application = new JobApplication({
-      //   userId,
-      //   jobId: id,
-      //   status: "assessment_scheduled",
-      //   assessment: {
-      //     scheduled: true,
-      //     scheduledDateTime,
-      //     assessmentCode,
-      //     assessmentLink,
-      //   },
-      // });
-      // await application.save({ session });
-
-      // await session.commitTransaction();
-      // session.endSession();
-
-      // await sendAssessmentEmail(
-      //   user.email,
-      //   "Your Assessement is Scheduled",
-      //   assessmentCode,
-      //   scheduledDateTime,
-      //   assessmentLink
-      // );
-
-      // res.status(200).json({
-      //   message: "Successfully applied and assessment scheduled",
-      //   tokensRemaining: user.tokens,
-      //   applicationId: application._id,
-      //   assessmentDateTime: application.assessment.scheduledDateTime,
-      //   assessmentCode,
-      //   assessmentLink,
-      // });
-      // this response is just to testing purpose to show 1 minute timer
       user.tokens -= 10;
       await user.save({ session });
 
-      const SLOT_DURATION = 30 * 60 * 1000;
-      const MAX_SLOTS_PER_DAY = 10;
-      const THREE_MINUTES = 1 * 60 * 1000;
+      const SLOT_DURATION = 40 * 60 * 1000; // 40 minutes
+      const START_HOUR = 9;
+      const END_HOUR = 14;
+
+      // Get user's last scheduled assessment
+      const lastUserAssessment = await JobApplication.findOne({
+        userId,
+        "assessment.scheduled": true,
+        "assessment.scheduledDateTime": { $gte: new Date() },
+      })
+        .sort({ "assessment.scheduledDateTime": -1 })
+        .session(session);
+
+      // Calculate next slot for this user
+      let currentDate = new Date();
+      if (lastUserAssessment) {
+        currentDate = new Date(lastUserAssessment.assessment.scheduledDateTime.getTime() + SLOT_DURATION);
+      }
+
+      // Round seconds and milliseconds
+      currentDate.setSeconds(0, 0);
 
       let scheduledDateTime;
-      let currentDate = new Date();
+      while (true) {
+        const hour = currentDate.getHours();
+        if (hour >= START_HOUR && hour < END_HOUR) {
+          scheduledDateTime = new Date(currentDate);
+          break;
+        }
 
-      scheduledDateTime = new Date(currentDate.getTime() + THREE_MINUTES);
-
-      const assessmentCode = await generateAssessmentCode();
-      console.log("THE ASSESSMENT CODE IS THIS ", assessmentCode);
-      if (!assessmentCode) {
-        throw new Error("Failed to generate a unique assessment code");
+        // If outside working hours, move to next day's 9 AM
+        currentDate.setDate(currentDate.getDate() + 1);
+        currentDate.setHours(START_HOUR, 0, 0, 0);
       }
-      const expiryDate = Math.floor(
-        (scheduledDateTime.getTime() + 5 * 60 * 1000) / 1000
-      );
-      console.log(expiryDate);
+
+      // Generate assessment link
+      const assessmentCode = await generateAssessmentCode();
+      const expiryDate = scheduledDateTime.getTime();
       const assessmentToken = generateAssessmentToken(
         userId,
         id,
         assessmentCode,
         expiryDate
       );
-
       const assessmentLink = `${process.env.CLIENT_URL}/${process.env.ASSESSMENT_URL}/assessment?token=${assessmentToken}`;
-
       console.log("Assessment link", assessmentLink);
 
-      const application = await new JobApplication({
+      const application = new JobApplication({
         userId,
         jobId: id,
         status: "assessment_scheduled",
