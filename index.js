@@ -9,6 +9,7 @@ import JobRouteCandidate from "./routes/JobRouteCandidate.js";
 import AssessmentRoute from "./routes/assessmentRoutes.js";
 import VerificationRoute from "./routes/verificationRoutes.js";
 import StripeRoutes from "./routes/stripeRoute.js";
+import BlockChainRoutes from "./routes/blockchainRoute.js";
 
 configDotenv(); //configure dotenv
 connectDb(); //connect to database
@@ -32,6 +33,8 @@ app.use("/api/v1/assessment", AssessmentRoute); //assessment routes
 app.use("/api/v1/verification", VerificationRoute); //verification and voilation routes
 
 app.use("/api/v1/stripe", StripeRoutes); //create checkout session and verify routes
+
+app.use("/api/v1/blockchain", BlockChainRoutes); //record and validate assessment report on blockchain
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server Running on PORT: ${PORT}`));
