@@ -3,7 +3,7 @@ import {
   recordAssessmentReport,
   validateAssessmentReport,
 } from "../controllers/blockchainController.js";
-import { protect } from "../middleware/authMiddleware";
+import { protect } from "../middleware/authMiddleware.js";
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
@@ -15,6 +15,6 @@ router
   .post(authorizeRoles("candidate"), recordAssessmentReport);
 router
   .route("/validate-assessment-report")
-  .post(authorizeRoles("recruiter"), validateAssessmentReport);
-
+  .post(authorizeRoles("candidate"), validateAssessmentReport);
+//recruiter 
 export default router;
