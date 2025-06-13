@@ -10,8 +10,8 @@ const contractABI = contractJson.abi;
 
 const provider = new ethers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
 const wallet = new ethers.Wallet(process.env.BLOCKCHAIN_PRIVATE_KEY, provider);
- const walletAddress=await wallet.getAddress();
- console.log("Wallet address to cross check", walletAddress);
+const walletAddress = await wallet.getAddress();
+
 const contract = new ethers.Contract(
   process.env.CONTRACT_ADDRESS,
   contractABI,
