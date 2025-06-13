@@ -1,47 +1,42 @@
 import { configDotenv } from "dotenv";
 configDotenv();
+
 import { ethers } from "ethers";
-import contractJson from "../contractABI.json" with { type: "json" };
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
+const contractJson = require("../contractABI.json");
 const contractABI = contractJson.abi;
 
 const provider = new ethers.JsonRpcProvider(process.env.BLOCKCHAIN_RPC_URL);
-console.log("Your provider", provider);
-console.log("Provider link", process.env.BLOCKCHAIN_RPC_URL);
-console.log("Your private key", process.env.BLOCKCHAIN_PRIVATE_KEY);
-const wallet = new ethers.Wallet(process.env.BLOCKCHAIN_PRIVATE_KEY);
-console.log("Wallet address in use:", await wallet.getAddress());
-const signer = wallet.connect(provider);
-console.log("From Environment variables",process.env.CONTRACT_ADDRESS);
+const wallet = new ethers.Wallet(process.env.BLOCKCHAIN_PRIVATE_KEY, provider);
+ const walletAddress=await wallet.getAddress();
+ console.log("Wallet address to cross check", walletAddress);
 const contract = new ethers.Contract(
   process.env.CONTRACT_ADDRESS,
   contractABI,
-  signer
+  wallet
 );
 
 const storeAssessmentHash = async (hash, assessmentCode) => {
   try {
     if (!/^[0-9a-fA-F]+$/.test(hash)) {
-      throw new Error(`Invalid hash format: ${hash}. Hash must contain only hexadecimal characters (0-9, a-f, A-F).`);
+      throw new Error(
+        `Invalid hash format: ${hash}. Must be a hex string without 0x.`
+      );
     }
-    let paddedHash = hash.padStart(64, '0');
 
-    if (paddedHash.length > 64) {
-        paddedHash = paddedHash.substring(0, 64);
-        console.warn(`Hash was too long and has been truncated to: ${paddedHash}`);
-    }
-    
-    // const bytes32Hash = ethers.getBytes("0x" + paddedHash);
-    console.log("Simple hash", hash);
-    console.log("Padded hash", paddedHash);
-    const bytes32Hash=ethers.hexlify("0x" + paddedHash);
-    console.log("bytes 32 hash", bytes32Hash);
-    const address=await contract.owner();
-    console.log("The address returned is",address);
+    let paddedHash = hash.padStart(64, "0").substring(0, 64);
+    const bytes32Hash = ethers.getBytes("0x" + paddedHash);
+
+    console.log("Storing assessment...");
     const tx = await contract.storeAssessment(assessmentCode, bytes32Hash);
     await tx.wait();
+
+    console.log("Transaction successful:", tx.hash);
     return tx.hash;
   } catch (error) {
-    console.error("Error while storing assessment hash:", error);
+    console.error("❌ Error while storing assessment hash:", error);
     throw error;
   }
 };
@@ -49,21 +44,24 @@ const storeAssessmentHash = async (hash, assessmentCode) => {
 const verifyAssessmentHash = async (hash, assessmentCode) => {
   try {
     if (!/^[0-9a-fA-F]+$/.test(hash)) {
-      throw new Error(`Invalid hash format: ${hash}. Hash must contain only hexadecimal characters (0-9, a-f, A-F).`);
+      throw new Error(
+        `Invalid hash format: ${hash}. Must be a hex string without 0x.`
+      );
     }
 
-    let paddedHash = hash.padStart(64, '0');
-    if (paddedHash.length > 64) {
-      paddedHash = paddedHash.substring(0, 64);
-      console.warn(`Hash was too long and has been truncated to: ${paddedHash}`);
-    }
-
+    let paddedHash = hash.padStart(64, "0").substring(0, 64);
     const bytes32Hash = ethers.getBytes("0x" + paddedHash);
 
-    const isValid = await contract.verifyAssessment(assessmentCode, bytes32Hash);
+    console.log("Verifying assessment...");
+    const isValid = await contract.verifyAssessment(
+      assessmentCode,
+      bytes32Hash
+    );
+
+    console.log("Verification result:", isValid);
     return isValid;
   } catch (error) {
-    console.error("Error while verifying assessment hash:", error);
+    console.error("❌ Error while verifying assessment hash:", error);
     throw error;
   }
 };
