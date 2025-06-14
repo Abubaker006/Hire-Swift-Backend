@@ -189,6 +189,7 @@ export const updateJobPostingStatus = async (req, res) => {
 };
 
 // @route POST /api/v1/candidate/job-postings/:id/apply
+
 export const applyToJobPosting = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -232,24 +233,33 @@ export const applyToJobPosting = async (req, res) => {
       const SLOT_DURATION = 40 * 60 * 1000;
       const START_HOUR = 9;
       const END_HOUR = 14;
+      const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
+      const now = new Date();
 
       const lastUserAssessment = await JobApplication.findOne({
         userId,
+        status: "assessment_scheduled",
         "assessment.scheduled": true,
-        "assessment.scheduledDateTime": { $gte: new Date() },
+        "assessment.isStarted": false,
+        "assessment.scheduledDateTime": { $gte: now },
       })
         .sort({ "assessment.scheduledDateTime": -1 })
         .session(session);
 
-      let currentDate = new Date();
+      let currentDate;
+
       if (lastUserAssessment) {
+        console.log("Scheduling after existing upcoming assessment.");
         currentDate = new Date(
-          lastUserAssessment.assessment.scheduledDateTime.getTime() +
-            SLOT_DURATION
+          lastUserAssessment.assessment.scheduledDateTime.getTime() + SLOT_DURATION
         );
+      } else {
+        console.log("No upcoming assessment, giving 12-hour prep buffer.");
+        currentDate = new Date(now.getTime() + TWELVE_HOURS_MS);
       }
 
-      currentDate.setSeconds(0, 0);
+      currentDate.setSeconds(0, 0); // Normalize seconds and milliseconds
 
       let scheduledDateTime;
       while (true) {
@@ -284,6 +294,7 @@ export const applyToJobPosting = async (req, res) => {
           assessmentLink,
         },
       });
+
       await application.save({ session });
 
       await session.commitTransaction();
@@ -315,6 +326,7 @@ export const applyToJobPosting = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 // @route GET /api/v1/candidate/job-postings
 export const getAllCandidateJobPostings = async (req, res) => {
