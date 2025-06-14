@@ -94,6 +94,7 @@ export const validateAssessment = async (req, res) => {
           taken: application.assessment.taken,
           passed: application.assessment.passed,
           overallScore: application.assessment.overallScore || null,
+          assessmentCode:application.assessment.assessmentCode,
         },
       };
     } else if (
@@ -165,6 +166,7 @@ export const validateAssessment = async (req, res) => {
             taken: application.assessment.taken,
             passed: application.assessment.passed,
             overallScore: application.assessment.overallScore || null,
+            assessmentCode:application.assessment.assessmenCode,
           },
         });
       }
@@ -203,6 +205,7 @@ export const validateAssessment = async (req, res) => {
           taken: application.assessment.taken,
           passed: application.assessment.passed,
           overallScore: application.assessment.overallScore || null,
+          assessmenCode: application.asessment.assessmenCode, //new line added would check if breaks implementation during testing.
         },
       });
     } else {
