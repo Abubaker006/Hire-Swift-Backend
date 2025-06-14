@@ -7,6 +7,7 @@ import {
   sendAssessmentEmail,
 } from "../utils/SendEmail.js";
 import { generateAssessmentToken } from "../utils/jwt.js";
+import { getNextAvailableSlot } from "../utils/getAvailableSlot.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -247,12 +248,15 @@ export const applyToJobPosting = async (req, res) => {
         .sort({ "assessment.scheduledDateTime": -1 })
         .session(session);
 
+      console.log("Last user assessment", lastUserAssessment);
+
       let currentDate;
 
       if (lastUserAssessment) {
         console.log("Scheduling after existing upcoming assessment.");
         currentDate = new Date(
-          lastUserAssessment.assessment.scheduledDateTime.getTime() + SLOT_DURATION
+          lastUserAssessment.assessment.scheduledDateTime.getTime() +
+            SLOT_DURATION
         );
       } else {
         console.log("No upcoming assessment, giving 12-hour prep buffer.");
@@ -261,16 +265,11 @@ export const applyToJobPosting = async (req, res) => {
 
       currentDate.setSeconds(0, 0); // Normalize seconds and milliseconds
 
-      let scheduledDateTime;
-      while (true) {
-        const hour = currentDate.getHours();
-        if (hour >= START_HOUR && hour < END_HOUR) {
-          scheduledDateTime = new Date(currentDate);
-          break;
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-        currentDate.setHours(START_HOUR, 0, 0, 0);
-      }
+      const scheduledDateTime = getNextAvailableSlot(
+        currentDate,
+        START_HOUR,
+        END_HOUR
+      );
 
       const assessmentCode = await generateAssessmentCode();
       const expiryDate = scheduledDateTime.getTime();
@@ -326,7 +325,6 @@ export const applyToJobPosting = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 // @route GET /api/v1/candidate/job-postings
 export const getAllCandidateJobPostings = async (req, res) => {
