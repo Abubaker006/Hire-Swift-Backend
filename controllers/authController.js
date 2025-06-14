@@ -7,8 +7,16 @@ import crypto from "node:crypto";
 // @route POST /api/auth/signup
 export const signup = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, contactNumber, role } =
-      req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      contactNumber,
+      recruiterVerification,
+      role,
+    } = req.body;
+
     if (
       !firstName ||
       !lastName ||
@@ -17,14 +25,14 @@ export const signup = async (req, res) => {
       !contactNumber ||
       !role
     ) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
+      return res.status(400).json({ message: "Missing required fields" });
     }
+
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
+
     const user = await User.create({
       firstName,
       lastName,
@@ -32,6 +40,9 @@ export const signup = async (req, res) => {
       password,
       contactNumber,
       role,
+      recruiterVerification:
+        role === "recruiter" ? recruiterVerification : undefined,
+      isVerified: role === "candidate" ? true : false,
     });
 
     const token = generateToken(user, "1d");
@@ -40,6 +51,7 @@ export const signup = async (req, res) => {
       maxAge: 1000 * 60 * 60 * 24 * 7,
       secure: process.env.NODE_ENV === "production",
     });
+
     res.status(201).json({
       message: "User created successfully",
       token,
@@ -51,7 +63,6 @@ export const signup = async (req, res) => {
 };
 
 // @route POST /api/auth/login
-
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -173,8 +184,8 @@ export const verifyResetToken = async (req, res) => {
       return res.status(404).json({ message: "Unauthorized access." });
     }
     const storedPasswordResetToken = user.passwordResetToken;
-    if(!storedPasswordResetToken || !hashedToken){
-      return res.status(500).json({message:"Internl Server Error"})
+    if (!storedPasswordResetToken || !hashedToken) {
+      return res.status(500).json({ message: "Internl Server Error" });
     }
     const inputBuffer = Buffer.from(hashedToken, "hex");
     const storedBuffer = Buffer.from(storedPasswordResetToken, "hex");

@@ -16,6 +16,17 @@ const UserSchema = new mongoose.Schema({
   },
   passwordResetToken: { type: String },
   passwordResetExpires: { type: Date },
+  recruiterVerification: {
+    companyEmail: String,
+    linkedInProfile: String,
+    registrationNumber: String,
+    jobPostingsURL: String,
+    websiteURL: String,
+    reviewsInfo: String,
+    verified: { type: Boolean, default: false },
+    submittedAt: { type: Date, default: Date.now },
+  },
+  isVerified: { type: Boolean, default: false },
 });
 
 UserSchema.pre("save", async function (next) {
