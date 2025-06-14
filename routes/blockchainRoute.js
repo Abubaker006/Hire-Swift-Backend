@@ -12,7 +12,7 @@ router.use(protect);
 
 router
   .route("/record-to-blockchain")
-  .post(authorizeRoles("recruiter", "candidate"), recordAssessmentReport);
+  .post(recordAssessmentReport);
 router
   .route("/validate-assessment-report")
   .post(authorizeRoles("recruiter"), validateAssessmentReport);
