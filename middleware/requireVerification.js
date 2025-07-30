@@ -11,12 +11,13 @@ export const requireVerifiedRecruiter = async (req, res, next) => {
     if (user.role !== "recruiter") {
       return next();
     }
-    if (!user.isVerified) {
-      return res.status(403).json({
-        message:
-          "Recruiter account is under verification. You cannot perform this action.",
-      });
-    }
+    // if (!user.isVerified) {
+    //   return res.status(403).json({
+    //     message:
+    //       "Recruiter account is under verification. You cannot perform this action.",
+    //   });
+    // }
+     return next();
   } catch (error) {
     console.error("Error in requireVerifiedRecruiter middleware:", error);
     res.status(500).json({ message: "Internal Server error" });

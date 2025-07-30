@@ -42,7 +42,7 @@ export const signup = async (req, res) => {
       role,
       recruiterVerification:
         role === "recruiter" ? recruiterVerification : undefined,
-      isVerified: role === "candidate" ? true : false,
+      isVerified: role === "candidate" ? true : true,
     });
 
     const token = generateToken(user, "1d");
